@@ -8,11 +8,11 @@ from solana.rpc.api import Client
 # --- 1. SETUP & CONFIG ---
 st.set_page_config(page_title="OBSIDIAN ELITE", layout="wide")
 
-# Replace this with your REAL Phantom Public Address
+# REPLACE THIS with your REAL Phantom Public Address from the "Receive" button
 MY_WALLET = "CES4EuiPnBxpz97iQ57jBcFTBfzmZgZNSnZrNmaCacht" 
 solana_client = Client("https://api.mainnet-beta.solana.com")
 
-# --- 2. THE DATA ENGINES ---
+# --- 2. DATA ENGINES ---
 def get_sol_price():
     """Gets real-time SOL price in USDT from Binance"""
     try:
@@ -52,8 +52,9 @@ st.markdown("""
         width: 100%; border: 1px solid #1c1c1c; text-align: center; margin-bottom: 20px; box-sizing: border-box;
     }
 
-    .price-main { color: #ffffff; font-size: 40px; font-weight: 800; letter-spacing: -1px; }
-    .price-mili { color: #00FFC2; font-size: 16px; font-weight: 600; font-family: monospace; }
+    /* MATCHING SIZES FOR THE 8-DIGIT LOOK */
+    .price-main { color: #ffffff; font-size: 38px; font-weight: 800; letter-spacing: -1px; }
+    .price-mili { color: #00FFC2; font-size: 38px; font-weight: 800; font-family: monospace; }
 
     /* BUTTONS */
     .stButton > button { 
@@ -70,10 +71,9 @@ sol_bal = get_wallet_balance()
 sol_price = get_sol_price()
 total_usdt = sol_bal * sol_price
 
-# Formatting for that 8-digit look
+# Formatting for the 8-digit precision
 main_part = int(total_usdt)
-# This gets exactly 8 digits after the decimal
-decimal_part = f"{total_usdt % 1:.8f}"[2:]
+decimal_part = f"{total_usdt % 1:.8f}"[2:] # Gets exactly 8 digits after the dot
 
 # --- 5. RENDER ---
 st.markdown('<div class="master-wrapper">', unsafe_allow_html=True)
@@ -83,7 +83,7 @@ st.markdown(f'''<div class="glass-card">
     <div class="status-container"><div class="led"></div><div class="status-text">PHANTOM LIVE FEED</div></div>
     <div style="color: #555; font-size: 10px; font-weight: 600; margin-bottom: 5px;">ACCOUNT EQUITY (USDT)</div>
     <div>
-        <span class="price-main">${main_part:,}</span><span class="price-mili">.{decimal_part}</span>
+        <span class="price-main">${main_part:,}.</span><span class="price-mili">{decimal_part}</span>
     </div>
 </div>''', unsafe_allow_html=True)
 
@@ -104,11 +104,15 @@ st.vega_lite_chart(chart_data, {
 
 # THE CONTROL BUTTONS
 col1, col2 = st.columns(2)
-with col1: st.button("START HFT")
-with col2: st.button("STOP")
+with col1: 
+    if st.button("START HFT"):
+        st.toast("Booting Jupiter Routing...")
+with col2: 
+    if st.button("STOP"):
+        st.toast("System Standby.")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 6. AUTO-REFRESH ---
+# --- 6. AUTO-REFRESH (1 SECOND SCAN) ---
 time.sleep(1)
 st.rerun()
