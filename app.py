@@ -9,21 +9,19 @@ from solana.rpc.api import Client
 st.set_page_config(page_title="OBSIDIAN ELITE", layout="wide")
 
 # REPLACE THIS with your REAL Phantom Public Address
-MY_WALLET = "CES4EuiPnBxpz97iQ57jBcFTBfzmZgZNSnZrNmaCacht" 
+MY_WALLET = "YOUR_PHANTOM_PUBLIC_ADDRESS_HERE" 
 solana_client = Client("https://api.mainnet-beta.solana.com")
 
 # --- 2. DATA ENGINES ---
 def get_sol_price():
-    """Gets real-time SOL price in USDT from Binance"""
     try:
         url = "https://api.binance.com/api/3/ticker/price?symbol=SOLUSDT"
         res = requests.get(url).json()
         return float(res['price'])
     except:
-        return 145.00  # Fallback
+        return 145.00
 
 def get_wallet_balance():
-    """Pings Solana blockchain for your real balance"""
     try:
         res = solana_client.get_balance(MY_WALLET)
         return res.value / 10**9 
@@ -46,7 +44,6 @@ st.markdown("""
     .status-text { color: #00FFC2; font-size: 10px; font-weight: 800; letter-spacing: 2px; margin-left: 8px; }
     .status-container { display: flex; align-items: center; justify-content: center; margin-bottom: 15px; }
 
-    /* CARD DESIGN */
     .glass-card {
         background-color: #0d0d0d; border-radius: 45px; padding: 30px 20px;
         width: 100%; border: 1px solid #1c1c1c; text-align: center; margin-bottom: 10px; box-sizing: border-box;
@@ -54,14 +51,6 @@ st.markdown("""
 
     .price-main { color: #ffffff; font-size: 40px; font-weight: 800; letter-spacing: -1px; }
     .price-mili { color: #00FFC2; font-size: 26px; font-weight: 600; font-family: monospace; opacity: 0.8; }
-
-    /* BUTTONS */
-    .stButton > button { 
-        width: 100% !important; height: 60px !important; border-radius: 30px !important; 
-        font-weight: 800 !important; font-size: 11px !important; text-transform: uppercase !important;
-    }
-    div[data-testid="stHorizontalBlock"] div:nth-child(1) button { background-color: #ffffff !important; color: #000000 !important; border: none !important; }
-    div[data-testid="stHorizontalBlock"] div:nth-child(2) button { background-color: #0d0d0d !important; color: #ffffff !important; border: 1px solid #222 !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -73,17 +62,16 @@ total_usdt = sol_bal * sol_price
 main_part = int(total_usdt)
 decimal_part = f"{total_usdt % 1:.8f}"[2:]
 
-# --- GROWTH GRAPH LOGIC ---
+# --- FIXED GROWTH GRAPH LOGIC ---
 if 'equity_history' not in st.session_state:
-    # Initialize with the current balance for 40 points
-    st.session_state.equity_history = [total_usdt] * 40
+    # We initialize with a very tiny number instead of pure 0 to force the graph to render
+    st.session_state.equity_history = [max(total_usdt, 0.000001)] * 40
 
-# Add the new balance to history
-st.session_state.equity_history.append(total_usdt)
-# Keep only the last 40 data points
+# Append new data
+st.session_state.equity_history.append(max(total_usdt, 0.000001))
 st.session_state.equity_history = st.session_state.equity_history[-40:]
 
-# --- 5. RENDER & ANIMATION ---
+# --- 5. RENDER ---
 st.markdown('<div class="master-wrapper">', unsafe_allow_html=True)
 
 # THE CARD
@@ -109,8 +97,8 @@ st.markdown(f'''
 </script>
 ''', unsafe_allow_html=True)
 
-# THE GROWTH CHART
-chart_data = pd.DataFrame({'USDT_Growth': st.session_state.equity_history})
+# THE GROWTH CHART (Guaranteed to show)
+chart_data = pd.DataFrame({'Growth': st.session_state.equity_history})
 
 st.vega_lite_chart(chart_data, {
     'width': 320,
@@ -130,10 +118,10 @@ st.vega_lite_chart(chart_data, {
     'encoding': {
         'x': {'field': 'index', 'type': 'quantitative', 'axis': None},
         'y': {
-            'field': 'USDT_Growth', 
+            'field': 'Growth', 
             'type': 'quantitative', 
             'axis': None, 
-            'scale': {'zero': False} # This "zooms" into the growth area
+            'scale': {'zero': True} # Changed to True so the baseline is always visible at 0
         }
     },
     'config': {'view': {'stroke': 'transparent'}, 'background': 'transparent'}
@@ -146,6 +134,6 @@ with col2: st.button("STOP")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 6. AUTO-REFRESH (1 SEC) ---
+# --- 6. AUTO-REFRESH ---
 time.sleep(1)
 st.rerun()
