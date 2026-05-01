@@ -19,7 +19,7 @@ def get_sol_price():
         res = requests.get(url).json()
         return float(res['price'])
     except:
-        return 145.00
+        return 155.00 # Updated fallback price
 
 def get_wallet_balance():
     try:
@@ -57,9 +57,7 @@ st.markdown("""
         width: 100% !important; height: 75px !important; border-radius: 40px !important; 
         font-weight: 900 !important; font-size: 14px !important; letter-spacing: 1px;
     }
-    /* Start Button (White) */
     div[data-testid="stHorizontalBlock"] div:nth-child(1) button { background-color: #ffffff !important; color: #000000 !important; border: none !important; }
-    /* Stop Button (Dark) */
     div[data-testid="stHorizontalBlock"] div:nth-child(2) button { background-color: #0d0d0d !important; color: #ffffff !important; border: 1px solid #222 !important; }
     </style>
 """, unsafe_allow_html=True)
@@ -70,14 +68,11 @@ sol_price = get_sol_price()
 total_usdt = sol_bal * sol_price
 
 main_part = int(total_usdt)
-# Use exactly 8 digits like the screenshot
 decimal_part = f"{total_usdt % 1:.8f}"[2:]
 
-# History for the glowing graph
+# Growth history logic
 if 'equity_history' not in st.session_state:
-    # Initialize with a slight upward tilt for the 'pro' look
-    st.session_state.equity_history = [total_usdt + (i * 0.001) for i in range(40)]
-
+    st.session_state.equity_history = [total_usdt] * 40
 st.session_state.equity_history.append(total_usdt)
 st.session_state.equity_history = st.session_state.equity_history[-40:]
 
@@ -90,24 +85,35 @@ st.markdown(f'''
     <div class="status-container"><div class="led"></div><div class="status-text">BOT STATUS: ACTIVE</div></div>
     <div class="price-label">ACCOUNT EQUITY (USDT)</div>
     <div>
-        <span class="price-main">${main_part:,}</span><span class="price-mili">.{decimal_part}</span>
+        <span class="price-main">${main_part:,}</span><span class="price-mili" id="animated-decimals">.{decimal_part}</span>
     </div>
 </div>
+
+<script>
+    const decimalElem = window.parent.document.getElementById('animated-decimals');
+    if(decimalElem) {{
+        let baseDecimal = "{decimal_part}";
+        setInterval(() => {{
+            // High-speed flickering for the last 4 digits for a live 'milly-second' feel
+            let micro = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
+            let staticPart = baseDecimal.substring(0, 4);
+            decimalElem.innerText = "." + staticPart + micro;
+        }}, 60); 
+    }}
+</script>
 ''', unsafe_allow_html=True)
 
-# --- 6. THE SCREENSHOT-STYLE GLOWING GRAPH ---
+# --- 6. THE SCREENSHOT-STYLE GLOWING GROWTH GRAPH ---
 chart_data = pd.DataFrame({'val': st.session_state.equity_history, 'idx': range(len(st.session_state.equity_history))})
 
 st.vega_lite_chart(chart_data, {
     "width": "container",
-    "height": 200,
+    "height": 220,
     "config": {"view": {"stroke": "transparent"}, "background": "transparent"},
     "layer": [
         {
-            # THE GRADIENT FILL (The "Glow" under the line)
             "mark": {
                 "type": "area",
-                "line": False,
                 "interpolate": "monotone",
                 "color": {
                     "gradient": "linear",
@@ -115,7 +121,7 @@ st.vega_lite_chart(chart_data, {
                         {"offset": 0, "color": "#00FFC2"},
                         {"offset": 1, "color": "rgba(0, 255, 194, 0)"}
                     ],
-                    "x1": 1, "y1": 1, "x2": 1, "y2": 0 # Vertical gradient
+                    "x1": 1, "y1": 1, "x2": 1, "y2": 0
                 }
             },
             "encoding": {
@@ -124,13 +130,7 @@ st.vega_lite_chart(chart_data, {
             }
         },
         {
-            # THE SHARP TOP LINE
-            "mark": {
-                "type": "line",
-                "color": "#00FFC2",
-                "strokeWidth": 3,
-                "interpolate": "monotone"
-            },
+            "mark": {"type": "line", "color": "#00FFC2", "strokeWidth": 3, "interpolate": "monotone"},
             "encoding": {
                 "x": {"field": "idx", "type": "quantitative", "axis": None},
                 "y": {"field": "val", "type": "quantitative", "axis": None}
@@ -148,6 +148,6 @@ with col2: st.button("STOP")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 7. AUTO-REFRESH (1 SEC) ---
+# --- 7. AUTO-REFRESH ---
 time.sleep(1)
 st.rerun()
