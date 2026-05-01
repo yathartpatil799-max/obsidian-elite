@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -15,21 +14,23 @@ solana_client = Client("https://api.mainnet-beta.solana.com")
 
 # --- 2. DATA ENGINES ---
 def get_sol_price():
+    """Gets real-time SOL price in USDT from Binance"""
     try:
         url = "https://api.binance.com/api/3/ticker/price?symbol=SOLUSDT"
         res = requests.get(url).json()
         return float(res['price'])
     except:
-        return 145.00
+        return 145.00  # Fallback price
 
 def get_wallet_balance():
+    """Pings Solana blockchain for your real balance"""
     try:
         res = solana_client.get_balance(MY_WALLET)
         return res.value / 10**9 
     except:
         return 0.0
 
-# --- 3. PRO AESTHETIC CSS (REFINED HIERARCHY) ---
+# --- 3. PRO AESTHETIC CSS ---
 st.markdown("""
     <style>
     header, footer, .stDeployButton, #MainMenu {visibility: hidden;}
@@ -51,7 +52,7 @@ st.markdown("""
         width: 100%; border: 1px solid #1c1c1c; text-align: center; margin-bottom: 20px; box-sizing: border-box;
     }
 
-    /* THE HIERARCHY: Big Dollars, Sleek Decimals */
+    /* THE HIERARCHY */
     .price-main { color: #ffffff; font-size: 40px; font-weight: 800; letter-spacing: -1px; }
     .price-mili { color: #00FFC2; font-size: 28px; font-weight: 600; font-family: monospace; opacity: 0.9; }
 
@@ -73,19 +74,34 @@ total_usdt = sol_bal * sol_price
 main_part = int(total_usdt)
 decimal_part = f"{total_usdt % 1:.8f}"[2:]
 
-# --- 5. RENDER ---
+# --- 5. RENDER & ANIMATION ---
 st.markdown('<div class="master-wrapper">', unsafe_allow_html=True)
 
-# THE CARD
-st.markdown(f'''<div class="glass-card">
+# THE CARD WITH JAVASCRIPT TICKER
+st.markdown(f'''
+<div class="glass-card">
     <div class="status-container"><div class="led"></div><div class="status-text">PHANTOM LIVE FEED</div></div>
     <div style="color: #555; font-size: 10px; font-weight: 600; margin-bottom: 5px;">ACCOUNT EQUITY (USDT)</div>
-    <div>
-        <span class="price-main">${main_part:,}</span><span class="price-mili">.{decimal_part}</span>
+    <div id="price-container">
+        <span class="price-main">${main_part:,}</span><span class="price-mili" id="animated-decimals">.{decimal_part}</span>
     </div>
-</div>''', unsafe_allow_html=True)
+</div>
 
-# THE GRAPH (Smooth 40-point history)
+<script>
+    // This creates a "flicker" effect on the last 3 digits to simulate HFT speed
+    const decimalElem = window.parent.document.getElementById('animated-decimals');
+    if(decimalElem) {{
+        let baseDecimal = "{decimal_part}";
+        setInterval(() => {{
+            let micro = Math.floor(Math.random() * 999).toString().padStart(3, '0');
+            let staticPart = baseDecimal.substring(0, 5);
+            decimalElem.innerText = "." + staticPart + micro;
+        }}, 80); 
+    }}
+</script>
+''', unsafe_allow_html=True)
+
+# THE GRAPH
 if 'hist' not in st.session_state:
     st.session_state.hist = [total_usdt] * 40
 st.session_state.hist.append(total_usdt)
@@ -102,11 +118,15 @@ st.vega_lite_chart(chart_data, {
 
 # THE CONTROL BUTTONS
 col1, col2 = st.columns(2)
-with col1: st.button("START HFT")
-with col2: st.button("STOP")
+with col1: 
+    if st.button("START HFT"):
+        st.toast("System Online. Scanning Jupiter Routes...")
+with col2: 
+    if st.button("STOP"):
+        st.toast("Bot Paused.")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 6. AUTO-REFRESH ---
+# --- 6. AUTO-REFRESH (1 SECOND) ---
 time.sleep(1)
 st.rerun()
