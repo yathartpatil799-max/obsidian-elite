@@ -5,18 +5,18 @@ import requests
 import os
 from solana.rpc.api import Client
 
-# --- 1. CORE ENGINE & BLOCKCHAIN SETUP ---
+# --- 1. CORE ENGINE SETUP ---
 st.set_page_config(page_title="OBSIDIAN ELITE", layout="wide")
 
 # USER CONFIG
 MY_WALLET = "CES4EuiPnBxpz97iQ57jBcFTBfzmZgZNSnZrNmaCacht" 
 solana_client = Client("https://api.mainnet-beta.solana.com")
 
-# Initialize Local Database (Fixes "File Not Found")
+# Initialize Database
 if not os.path.exists("trades.csv"):
     pd.DataFrame(columns=["Pair", "Profit", "Time"]).to_csv("trades.csv", index=False)
 
-# Session State Management
+# Session States
 if 'bot_active' not in st.session_state:
     st.session_state.bot_active = True
 if 'view_history' not in st.session_state:
@@ -24,29 +24,25 @@ if 'view_history' not in st.session_state:
 if 'equity_history' not in st.session_state:
     st.session_state.equity_history = [0.0]
 
-# --- 2. THE 100% REAL DATA ENGINE ---
+# --- 2. 100% REAL DATA ENGINE ---
 def get_verified_data():
-    """Strictly pulls from Binance and Solana Mainnet. No simulation."""
+    """Strictly pulls from Binance and Solana Mainnet."""
     try:
-        # Live SOL Price
         p_res = requests.get("https://api.binance.com/api/3/ticker/price?symbol=SOLUSDT", timeout=1).json()
         sol_price = float(p_res['price'])
-        # Live Wallet Balance
         b_res = solana_client.get_balance(MY_WALLET)
         balance = b_res.value / 10**9 
         return sol_price * balance
     except:
-        # Prevents app crash if internet blips
         return st.session_state.equity_history[-1] if st.session_state.equity_history else 0.0
 
-# Pulse the data update
 current_total = get_verified_data()
 
 if st.session_state.bot_active:
     st.session_state.equity_history.append(current_total)
-    st.session_state.equity_history = st.session_state.equity_history[-60:] # Last 60 seconds
+    st.session_state.equity_history = st.session_state.equity_history[-60:]
 
-# --- 3. BINGX PRO CSS (CENTERED & STABLE) ---
+# --- 3. BINGX PRO CSS (CENTRALIZED) ---
 status_color = "#00FFC2" if st.session_state.bot_active else "#FF3B3B"
 
 st.markdown(f"""
@@ -56,7 +52,7 @@ st.markdown(f"""
     .block-container {{ max-width: 450px !important; padding: 0px !important; margin: 0 auto !important; }}
     html, body, [data-testid="stAppViewContainer"] {{ background-color: #000000 !important; overflow: hidden !important; }}
 
-    /* CENTERED BUTTON ROW (STRAIGHT LINE) */
+    /* CENTERED BUTTON ROW */
     [data-testid="stHorizontalBlock"] {{
         display: flex !important;
         flex-direction: row !important;
@@ -64,7 +60,6 @@ st.markdown(f"""
         align-items: center !important;
         gap: 12px !important;
         width: 100% !important;
-        padding: 0 10px !important;
     }}
 
     div.stButton > button {{
@@ -79,10 +74,9 @@ st.markdown(f"""
     div[data-testid="column"]:nth-child(1) button {{ background-color: #ffffff !important; color: #000 !important; }}
     div[data-testid="column"]:nth-child(2) button {{ background-color: #0d0d0d !important; color: #fff !important; border: 1px solid #222 !important; }}
 
-    /* Layout Cards */
     .glass-card {{
         background-color: #0d0d0d; border-radius: 40px; padding: 35px 20px;
-        border: 1px solid #1c1c1c; text-align: center; margin-bottom: 5px;
+        border: 1px solid #1c1c1c; text-align: center;
     }}
     .led {{ width: 10px; height: 10px; border-radius: 50%; background-color: {status_color}; box-shadow: 0 0 15px {status_color}; margin-right: 10px; animation: blink 1s infinite alternate; }}
     @keyframes blink {{ from {{ opacity: 1; }} to {{ opacity: 0.4; }} }}
@@ -90,16 +84,16 @@ st.markdown(f"""
     .price-main {{ color: #ffffff; font-size: 52px; font-weight: 800; }}
     .price-mili {{ color: {status_color}; font-size: 32px; font-weight: 600; font-family: monospace; }}
     
-    .archive-section button {{
+    .archive-btn button {{
         background: #111 !important; color: #fff !important; border: 1px solid #222 !important;
         height: 45px !important; width: auto !important; padding: 0 25px !important; border-radius: 12px !important;
     }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. RENDER LOGIC (DASHBOARD vs. ARCHIVE) ---
+# --- 4. RENDER LOGIC ---
 if not st.session_state.view_history:
-    # --- DASHBOARD VIEW ---
+    # --- DASHBOARD VIEW (Everything in here is hidden during Archive) ---
     main_v = int(current_total)
     dec_v = f"{current_total % 1:.8f}"[2:]
 
@@ -125,7 +119,7 @@ if not st.session_state.view_history:
         ]
     })
 
-    # START / STOP BUTTONS (STRAIGHT LINE)
+    # START / STOP (STRAIGHT LINE)
     col1, col2 = st.columns(2)
     with col1:
         if st.button("START BOT"):
@@ -136,11 +130,11 @@ if not st.session_state.view_history:
             st.session_state.bot_active = False
             st.rerun()
 
-    # LOGS & ARCHIVE (This whole section disappears in Archive view)
+    # LOGS & ARCHIVE BUTTON (Hidden when view_history is True)
     st.markdown('<div style="padding: 0 15px; margin-top: 15px;">', unsafe_allow_html=True)
     st.markdown('<div style="color:#444; font-size:10px; font-weight:800; text-transform:uppercase;">Live Execution Log</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="archive-section">', unsafe_allow_html=True)
+    st.markdown('<div class="archive-btn">', unsafe_allow_html=True)
     if st.button("ARCHIVE ➜"):
         st.session_state.view_history = True
         st.rerun()
@@ -149,7 +143,7 @@ if not st.session_state.view_history:
     # RECENT TRADES
     df_t = pd.read_csv("trades.csv").tail(3)
     if df_t.empty:
-        st.markdown('<div style="color:#222; text-align:center; padding:20px; font-weight:700;">CONNECTING TO NETWORK...</div>', unsafe_allow_html=True)
+        st.markdown('<div style="color:#222; text-align:center; padding:20px; font-weight:700;">SCANNING BLOCKCHAIN...</div>', unsafe_allow_html=True)
     else:
         for _, row in df_t.iterrows():
             st.markdown(f'''
@@ -161,13 +155,13 @@ if not st.session_state.view_history:
     st.markdown('</div></div>', unsafe_allow_html=True)
 
 else:
-    # --- CLEAN ARCHIVE VIEW (Nothing else shows here) ---
+    # --- ARCHIVE VIEW (STRICTLY CLEAN) ---
     st.markdown('<div style="padding:25px;">', unsafe_allow_html=True)
     if st.button("⬅ BACK TO TERMINAL"):
         st.session_state.view_history = False
         st.rerun()
     
-    st.markdown('<h2 style="color:#fff;">Full Trade History</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 style="color:#fff;">Trade History Archive</h2>', unsafe_allow_html=True)
     
     history_df = pd.read_csv("trades.csv")
     if history_df.empty:
@@ -176,6 +170,6 @@ else:
         st.dataframe(history_df, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# 1-Second Heartbeat (High Speed, No Lag)
+# 1-Second Global Heartbeat
 time.sleep(1)
 st.rerun()
