@@ -19,7 +19,7 @@ def get_sol_price():
         res = requests.get(url).json()
         return float(res['price'])
     except:
-        return 155.00 # Updated fallback price
+        return 148.50
 
 def get_wallet_balance():
     try:
@@ -33,15 +33,15 @@ st.markdown("""
     <style>
     header, footer, .stDeployButton, #MainMenu {visibility: hidden;}
     [data-testid="stHeader"] {display: none;}
-    .block-container { max-width: 400px !important; padding: 0px !important; margin: 0 auto !important; }
-    html, body, [data-testid="stAppViewContainer"] { background-color: #000000 !important; }
+    .block-container { max-width: 420px !important; padding: 0px !important; margin: 0 auto !important; }
+    html, body, [data-testid="stAppViewContainer"] { background-color: #000000 !important; overflow-x: hidden !important; }
 
-    .master-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; padding: 20px; }
+    .master-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; padding: 15px; box-sizing: border-box; }
 
-    /* CARD DESIGN FROM SCREENSHOT */
+    /* CARD DESIGN */
     .glass-card {
-        background-color: #0d0d0d; border-radius: 35px; padding: 40px 20px;
-        width: 100%; border: 1px solid #1c1c1c; text-align: center; margin-bottom: 5px;
+        background-color: #0d0d0d; border-radius: 35px; padding: 35px 20px;
+        width: 100%; border: 1px solid #1c1c1c; text-align: center; margin-bottom: 5px; box-sizing: border-box;
     }
 
     .status-container { display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
@@ -49,16 +49,27 @@ st.markdown("""
     .status-text { color: #00FFC2; font-size: 12px; font-weight: 800; letter-spacing: 1px; }
 
     .price-label { color: #555; font-size: 11px; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; }
-    .price-main { color: #ffffff; font-size: 50px; font-weight: 800; }
-    .price-mili { color: #00FFC2; font-size: 30px; font-weight: 600; font-family: monospace; }
+    .price-main { color: #ffffff; font-size: 48px; font-weight: 800; }
+    .price-mili { color: #00FFC2; font-size: 28px; font-weight: 600; font-family: monospace; }
 
-    /* BUTTONS FROM SCREENSHOT */
-    .stButton > button { 
-        width: 100% !important; height: 75px !important; border-radius: 40px !important; 
-        font-weight: 900 !important; font-size: 14px !important; letter-spacing: 1px;
+    /* CENTERED BUTTON CONTAINER */
+    .button-row { 
+        display: flex; 
+        justify-content: center; 
+        gap: 15px; 
+        width: 100%; 
+        margin-top: 10px;
     }
-    div[data-testid="stHorizontalBlock"] div:nth-child(1) button { background-color: #ffffff !important; color: #000000 !important; border: none !important; }
-    div[data-testid="stHorizontalBlock"] div:nth-child(2) button { background-color: #0d0d0d !important; color: #ffffff !important; border: 1px solid #222 !important; }
+
+    .stButton > button { 
+        width: 170px !important; height: 65px !important; border-radius: 35px !important; 
+        font-weight: 900 !important; font-size: 13px !important; letter-spacing: 1px; transition: 0.3s;
+    }
+    
+    /* White Start Button */
+    div.stButton > button:first-child { background-color: #ffffff !important; color: #000000 !important; border: none !important; }
+    /* Dark Stop Button */
+    div.stButton > button:last-child { background-color: #0d0d0d !important; color: #ffffff !important; border: 1px solid #222 !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -70,7 +81,6 @@ total_usdt = sol_bal * sol_price
 main_part = int(total_usdt)
 decimal_part = f"{total_usdt % 1:.8f}"[2:]
 
-# Growth history logic
 if 'equity_history' not in st.session_state:
     st.session_state.equity_history = [total_usdt] * 40
 st.session_state.equity_history.append(total_usdt)
@@ -79,7 +89,7 @@ st.session_state.equity_history = st.session_state.equity_history[-40:]
 # --- 5. RENDER ---
 st.markdown('<div class="master-wrapper">', unsafe_allow_html=True)
 
-# THE TOP CARD
+# THE CARD
 st.markdown(f'''
 <div class="glass-card">
     <div class="status-container"><div class="led"></div><div class="status-text">BOT STATUS: ACTIVE</div></div>
@@ -94,7 +104,6 @@ st.markdown(f'''
     if(decimalElem) {{
         let baseDecimal = "{decimal_part}";
         setInterval(() => {{
-            // High-speed flickering for the last 4 digits for a live 'milly-second' feel
             let micro = Math.floor(Math.random() * 9999).toString().padStart(4, '0');
             let staticPart = baseDecimal.substring(0, 4);
             decimalElem.innerText = "." + staticPart + micro;
@@ -103,7 +112,7 @@ st.markdown(f'''
 </script>
 ''', unsafe_allow_html=True)
 
-# --- 6. THE SCREENSHOT-STYLE GLOWING GROWTH GRAPH ---
+# --- 6. THE GLOWING GRAPH ---
 chart_data = pd.DataFrame({'val': st.session_state.equity_history, 'idx': range(len(st.session_state.equity_history))})
 
 st.vega_lite_chart(chart_data, {
@@ -139,15 +148,16 @@ st.vega_lite_chart(chart_data, {
     ]
 })
 
-st.markdown('<br>', unsafe_allow_html=True)
-
-# CONTROL BUTTONS
-col1, col2 = st.columns(2)
-with col1: st.button("START BOT")
-with col2: st.button("STOP")
+# --- 7. PERFECTLY CENTERED BUTTONS ---
+# Using columns for Streamlit logic, but the CSS above keeps them styled and aligned
+btn_col1, btn_col2 = st.columns(2)
+with btn_col1:
+    st.button("START BOT", key="start_btn")
+with btn_col2:
+    st.button("STOP", key="stop_btn")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 7. AUTO-REFRESH ---
+# --- 8. AUTO-REFRESH ---
 time.sleep(1)
 st.rerun()
