@@ -10,12 +10,38 @@ st.set_page_config(page_title="OBSIDIAN ELITE", layout="wide")
 MY_WALLET = "CES4EuiPnBxpz97iQ57jBcFTBfzmZgZNSnZrNmaCacht" 
 solana_client = Client("https://api.mainnet-beta.solana.com")
 
-def get_wallet_balance():
+import requests
+
+def get_sol_price():
+    """Gets the real-time price of 1 SOL in USDT"""
     try:
-        res = solana_client.get_balance(MY_WALLET)
-        return res.value / 10**9 
+        url = "https://api.binance.com/api/3/ticker/price?symbol=SOLUSDT"
+        res = requests.get(url).json()
+        return float(res['price'])
     except:
-        return 0.0
+        return 145.00 # Backup price if API is down
+
+def get_total_usdt_value():
+    """Calculates: (Your SOL) x (Current Price)"""
+    sol_balance = get_wallet_balance() # Your existing function
+    price = get_sol_price()
+    return sol_balance * price
+
+# --- Inside your UI Render Section ---
+usdt_value = get_total_usdt_value()
+
+# Split the value for the 8-digit look
+# Example: If you have $100.12345678
+main_val = int(usdt_value) 
+decimals = f"{usdt_value % 1: .8f}"[2:] # Gets exactly 8 digits after the dot
+
+st.markdown(f'''<div class="glass-card">
+    <div class="status-container"><div class="led"></div><div class="status-text">LIVE EQUITY (USDT)</div></div>
+    <div>
+        <span class="price-main">${main_val:,}</span>
+        <span class="price-mili">.{decimals}</span>
+    </div>
+</div>''', unsafe_allow_html=True)
 
 # --- CSS (Keep your same "Pro" style) ---
 st.markdown("""
