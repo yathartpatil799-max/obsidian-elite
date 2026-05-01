@@ -5,7 +5,7 @@ import requests
 import os
 from solana.rpc.api import Client
 
-# --- 1. CORE ENGINE SETUP ---
+# --- 1. CORE CONFIG & REAL-TIME SETUP ---
 st.set_page_config(page_title="OBSIDIAN ELITE", layout="wide")
 
 # USER CONFIG
@@ -24,12 +24,13 @@ if 'view_history' not in st.session_state:
 if 'equity_history' not in st.session_state:
     st.session_state.equity_history = [0.0]
 
-# --- 2. 100% REAL DATA ENGINE ---
+# --- 2. 100% REAL DATA ENGINE (NO LAG) ---
 def get_verified_data():
-    """Strictly pulls from Binance and Solana Mainnet."""
     try:
+        # Real Binance Ticker
         p_res = requests.get("https://api.binance.com/api/3/ticker/price?symbol=SOLUSDT", timeout=1).json()
         sol_price = float(p_res['price'])
+        # Real Mainnet Balance
         b_res = solana_client.get_balance(MY_WALLET)
         balance = b_res.value / 10**9 
         return sol_price * balance
@@ -42,7 +43,7 @@ if st.session_state.bot_active:
     st.session_state.equity_history.append(current_total)
     st.session_state.equity_history = st.session_state.equity_history[-60:]
 
-# --- 3. BINGX PRO CSS (CENTRALIZED) ---
+# --- 3. PRO BINGX STYLING ---
 status_color = "#00FFC2" if st.session_state.bot_active else "#FF3B3B"
 
 st.markdown(f"""
@@ -50,7 +51,7 @@ st.markdown(f"""
     header, footer, .stDeployButton, #MainMenu {{visibility: hidden;}}
     [data-testid="stHeader"] {{display: none;}}
     .block-container {{ max-width: 450px !important; padding: 0px !important; margin: 0 auto !important; }}
-    html, body, [data-testid="stAppViewContainer"] {{ background-color: #000000 !important; overflow: hidden !important; }}
+    html, body, [data-testid="stAppViewContainer"] {{ background-color: #000000 !important; overflow-x: hidden !important; }}
 
     /* CENTERED BUTTON ROW */
     [data-testid="stHorizontalBlock"] {{
@@ -70,7 +71,7 @@ st.markdown(f"""
         width: 100% !important;
     }}
 
-    /* Start = White, Stop = Black */
+    /* Start/Stop Colors */
     div[data-testid="column"]:nth-child(1) button {{ background-color: #ffffff !important; color: #000 !important; }}
     div[data-testid="column"]:nth-child(2) button {{ background-color: #0d0d0d !important; color: #fff !important; border: 1px solid #222 !important; }}
 
@@ -84,16 +85,18 @@ st.markdown(f"""
     .price-main {{ color: #ffffff; font-size: 52px; font-weight: 800; }}
     .price-mili {{ color: {status_color}; font-size: 32px; font-weight: 600; font-family: monospace; }}
     
-    .archive-btn button {{
+    /* Archive Button Style */
+    .archive-btn-style button {{
         background: #111 !important; color: #fff !important; border: 1px solid #222 !important;
         height: 45px !important; width: auto !important; padding: 0 25px !important; border-radius: 12px !important;
+        font-size: 12px !important;
     }}
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. RENDER LOGIC ---
+# --- 4. NAVIGATION LOGIC ---
 if not st.session_state.view_history:
-    # --- DASHBOARD VIEW (Everything in here is hidden during Archive) ---
+    # --- DASHBOARD MODE ---
     main_v = int(current_total)
     dec_v = f"{current_total % 1:.8f}"[2:]
 
@@ -108,7 +111,7 @@ if not st.session_state.view_history:
         </div>
     ''', unsafe_allow_html=True)
 
-    # THE GROWTH CHART
+    # GLOWING GROWTH CHART
     chart_df = pd.DataFrame({'v': st.session_state.equity_history, 'i': range(len(st.session_state.equity_history))})
     st.vega_lite_chart(chart_df, {
         "width": "container", "height": 210,
@@ -130,22 +133,23 @@ if not st.session_state.view_history:
             st.session_state.bot_active = False
             st.rerun()
 
-    # LOGS & ARCHIVE BUTTON (Hidden when view_history is True)
+    # BOTTOM LOG SECTION
     st.markdown('<div style="padding: 0 15px; margin-top: 15px;">', unsafe_allow_html=True)
     st.markdown('<div style="color:#444; font-size:10px; font-weight:800; text-transform:uppercase;">Live Execution Log</div>', unsafe_allow_html=True)
     
-    st.markdown('<div class="archive-btn">', unsafe_allow_html=True)
+    # ARCHIVE BUTTON (LOCKED INSIDE DASHBOARD)
+    st.markdown('<div class="archive-btn-style">', unsafe_allow_html=True)
     if st.button("ARCHIVE ➜"):
         st.session_state.view_history = True
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # RECENT TRADES
+    # RECENT 3 TRADES
     df_t = pd.read_csv("trades.csv").tail(3)
     if df_t.empty:
-        st.markdown('<div style="color:#222; text-align:center; padding:20px; font-weight:700;">SCANNING BLOCKCHAIN...</div>', unsafe_allow_html=True)
+        st.markdown('<div style="color:#222; text-align:center; padding:20px; font-weight:700;">SCANNING REAL-TIME DATA...</div>', unsafe_allow_html=True)
     else:
-        for _, row in df_t.iterrows():
+        for _, row in df_t.iloc[::-1].iterrows(): # Show newest first
             st.markdown(f'''
             <div style="display:flex; justify-content:space-between; padding:15px 0; border-bottom:1px solid #111;">
                 <div><div style="color:#fff; font-weight:700; font-size:14px;">{row['Pair']}</div><div style="color:#444; font-size:11px;">{row['Time']}</div></div>
@@ -155,13 +159,13 @@ if not st.session_state.view_history:
     st.markdown('</div></div>', unsafe_allow_html=True)
 
 else:
-    # --- ARCHIVE VIEW (STRICTLY CLEAN) ---
+    # --- ARCHIVE VIEW (STRICTLY ISOLATED) ---
     st.markdown('<div style="padding:25px;">', unsafe_allow_html=True)
     if st.button("⬅ BACK TO TERMINAL"):
         st.session_state.view_history = False
         st.rerun()
     
-    st.markdown('<h2 style="color:#fff;">Trade History Archive</h2>', unsafe_allow_html=True)
+    st.markdown('<h2 style="color:#fff; margin-bottom:20px;">Trade History Archive</h2>', unsafe_allow_html=True)
     
     history_df = pd.read_csv("trades.csv")
     if history_df.empty:
@@ -170,6 +174,6 @@ else:
         st.dataframe(history_df, use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# 1-Second Global Heartbeat
+# 1-Second Refresh Heartbeat
 time.sleep(1)
 st.rerun()
