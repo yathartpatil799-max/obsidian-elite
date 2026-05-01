@@ -20,7 +20,7 @@ def get_sol_price():
         res = requests.get(url).json()
         return float(res['price'])
     except:
-        return 145.00  # Fallback price
+        return 145.00  # Fallback
 
 def get_wallet_balance():
     """Pings Solana blockchain for your real balance"""
@@ -49,12 +49,11 @@ st.markdown("""
     /* CARD DESIGN */
     .glass-card {
         background-color: #0d0d0d; border-radius: 45px; padding: 30px 20px;
-        width: 100%; border: 1px solid #1c1c1c; text-align: center; margin-bottom: 20px; box-sizing: border-box;
+        width: 100%; border: 1px solid #1c1c1c; text-align: center; margin-bottom: 10px; box-sizing: border-box;
     }
 
-    /* THE HIERARCHY */
     .price-main { color: #ffffff; font-size: 40px; font-weight: 800; letter-spacing: -1px; }
-    .price-mili { color: #00FFC2; font-size: 28px; font-weight: 600; font-family: monospace; opacity: 0.9; }
+    .price-mili { color: #00FFC2; font-size: 26px; font-weight: 600; font-family: monospace; opacity: 0.8; }
 
     /* BUTTONS */
     .stButton > button { 
@@ -74,10 +73,20 @@ total_usdt = sol_bal * sol_price
 main_part = int(total_usdt)
 decimal_part = f"{total_usdt % 1:.8f}"[2:]
 
+# --- GROWTH GRAPH LOGIC ---
+if 'equity_history' not in st.session_state:
+    # Initialize with the current balance for 40 points
+    st.session_state.equity_history = [total_usdt] * 40
+
+# Add the new balance to history
+st.session_state.equity_history.append(total_usdt)
+# Keep only the last 40 data points
+st.session_state.equity_history = st.session_state.equity_history[-40:]
+
 # --- 5. RENDER & ANIMATION ---
 st.markdown('<div class="master-wrapper">', unsafe_allow_html=True)
 
-# THE CARD WITH JAVASCRIPT TICKER
+# THE CARD
 st.markdown(f'''
 <div class="glass-card">
     <div class="status-container"><div class="led"></div><div class="status-text">PHANTOM LIVE FEED</div></div>
@@ -88,7 +97,6 @@ st.markdown(f'''
 </div>
 
 <script>
-    // This creates a "flicker" effect on the last 3 digits to simulate HFT speed
     const decimalElem = window.parent.document.getElementById('animated-decimals');
     if(decimalElem) {{
         let baseDecimal = "{decimal_part}";
@@ -101,32 +109,43 @@ st.markdown(f'''
 </script>
 ''', unsafe_allow_html=True)
 
-# THE GRAPH
-if 'hist' not in st.session_state:
-    st.session_state.hist = [total_usdt] * 40
-st.session_state.hist.append(total_usdt)
-st.session_state.hist = st.session_state.hist[-40:]
+# THE GROWTH CHART
+chart_data = pd.DataFrame({'USDT_Growth': st.session_state.equity_history})
 
-chart_data = pd.DataFrame({'val': st.session_state.hist})
 st.vega_lite_chart(chart_data, {
-    'width': 300, 'height': 140,
-    'mark': {'type': 'area', 'interpolate': 'monotone', 'line': {'color': '#00FFC2', 'width': 3},
-             'color': {'gradient': 'linear', 'stops': [{'offset': 0, 'color': '#00FFC2'}, {'offset': 1, 'color': 'transparent'}]}},
-    'encoding': {'x': {'field': 'index', 'type': 'quantitative', 'axis': None}, 'y': {'field': 'val', 'type': 'quantitative', 'axis': None, 'scale': {'zero': False}}},
+    'width': 320,
+    'height': 160,
+    'mark': {
+        'type': 'area', 
+        'interpolate': 'monotone', 
+        'line': {'color': '#00FFC2', 'width': 3},
+        'color': {
+            'gradient': 'linear',
+            'stops': [
+                {'offset': 0, 'color': '#00FFC2'},
+                {'offset': 1, 'color': 'rgba(0, 255, 194, 0)'}
+            ]
+        }
+    },
+    'encoding': {
+        'x': {'field': 'index', 'type': 'quantitative', 'axis': None},
+        'y': {
+            'field': 'USDT_Growth', 
+            'type': 'quantitative', 
+            'axis': None, 
+            'scale': {'zero': False} # This "zooms" into the growth area
+        }
+    },
     'config': {'view': {'stroke': 'transparent'}, 'background': 'transparent'}
 })
 
-# THE CONTROL BUTTONS
+# CONTROL BUTTONS
 col1, col2 = st.columns(2)
-with col1: 
-    if st.button("START HFT"):
-        st.toast("System Online. Scanning Jupiter Routes...")
-with col2: 
-    if st.button("STOP"):
-        st.toast("Bot Paused.")
+with col1: st.button("START HFT")
+with col2: st.button("STOP")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 6. AUTO-REFRESH (1 SECOND) ---
+# --- 6. AUTO-REFRESH (1 SEC) ---
 time.sleep(1)
 st.rerun()
