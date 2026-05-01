@@ -28,29 +28,39 @@ def get_wallet_balance():
     except:
         return 0.0
 
-# --- 3. PRO AESTHETIC CSS ---
+# --- 3. PRO AESTHETIC CSS (MATCHING YOUR SCREENSHOT) ---
 st.markdown("""
     <style>
     header, footer, .stDeployButton, #MainMenu {visibility: hidden;}
     [data-testid="stHeader"] {display: none;}
-    .block-container { max-width: 360px !important; padding: 0px !important; margin: 0 auto !important; }
+    .block-container { max-width: 400px !important; padding: 0px !important; margin: 0 auto !important; }
     html, body, [data-testid="stAppViewContainer"] { background-color: #000000 !important; }
 
-    .master-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; margin-top: 25px; }
+    .master-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; padding: 20px; }
 
-    /* LED PULSE */
-    @keyframes pulse { 0% { opacity: 1; filter: drop-shadow(0 0 2px #00FFC2); } 50% { opacity: 0.3; } 100% { opacity: 1; filter: drop-shadow(0 0 5px #00FFC2); } }
-    .led { width: 8px; height: 8px; border-radius: 50%; background-color: #00FFC2; animation: pulse 2s infinite; }
-    .status-text { color: #00FFC2; font-size: 10px; font-weight: 800; letter-spacing: 2px; margin-left: 8px; }
-    .status-container { display: flex; align-items: center; justify-content: center; margin-bottom: 15px; }
-
+    /* CARD DESIGN FROM SCREENSHOT */
     .glass-card {
-        background-color: #0d0d0d; border-radius: 45px; padding: 30px 20px;
-        width: 100%; border: 1px solid #1c1c1c; text-align: center; margin-bottom: 20px; box-sizing: border-box;
+        background-color: #0d0d0d; border-radius: 35px; padding: 40px 20px;
+        width: 100%; border: 1px solid #1c1c1c; text-align: center; margin-bottom: 5px;
     }
 
-    .price-main { color: #ffffff; font-size: 42px; font-weight: 800; }
-    .price-mili { color: #00FFC2; font-size: 24px; font-weight: 600; font-family: monospace; }
+    .status-container { display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+    .led { width: 10px; height: 10px; border-radius: 50%; background-color: #00FFC2; box-shadow: 0 0 10px #00FFC2; margin-right: 10px; }
+    .status-text { color: #00FFC2; font-size: 12px; font-weight: 800; letter-spacing: 1px; }
+
+    .price-label { color: #555; font-size: 11px; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; }
+    .price-main { color: #ffffff; font-size: 50px; font-weight: 800; }
+    .price-mili { color: #00FFC2; font-size: 30px; font-weight: 600; font-family: monospace; }
+
+    /* BUTTONS FROM SCREENSHOT */
+    .stButton > button { 
+        width: 100% !important; height: 75px !important; border-radius: 40px !important; 
+        font-weight: 900 !important; font-size: 14px !important; letter-spacing: 1px;
+    }
+    /* Start Button (White) */
+    div[data-testid="stHorizontalBlock"] div:nth-child(1) button { background-color: #ffffff !important; color: #000000 !important; border: none !important; }
+    /* Stop Button (Dark) */
+    div[data-testid="stHorizontalBlock"] div:nth-child(2) button { background-color: #0d0d0d !important; color: #ffffff !important; border: 1px solid #222 !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -60,35 +70,76 @@ sol_price = get_sol_price()
 total_usdt = sol_bal * sol_price
 
 main_part = int(total_usdt)
+# Use exactly 8 digits like the screenshot
 decimal_part = f"{total_usdt % 1:.8f}"[2:]
 
-# Initialize history with a slight variation to force the line to show
+# History for the glowing graph
 if 'equity_history' not in st.session_state:
-    st.session_state.equity_history = [float(total_usdt)] * 40
+    # Initialize with a slight upward tilt for the 'pro' look
+    st.session_state.equity_history = [total_usdt + (i * 0.001) for i in range(40)]
 
-st.session_state.equity_history.append(float(total_usdt))
+st.session_state.equity_history.append(total_usdt)
 st.session_state.equity_history = st.session_state.equity_history[-40:]
 
 # --- 5. RENDER ---
 st.markdown('<div class="master-wrapper">', unsafe_allow_html=True)
 
-# THE CARD
+# THE TOP CARD
 st.markdown(f'''
 <div class="glass-card">
-    <div class="status-container"><div class="led"></div><div class="status-text">SYSTEM ONLINE</div></div>
-    <div style="color: #444; font-size: 11px; font-weight: 700; margin-bottom: 5px;">TOTAL EQUITY USDT</div>
+    <div class="status-container"><div class="led"></div><div class="status-text">BOT STATUS: ACTIVE</div></div>
+    <div class="price-label">ACCOUNT EQUITY (USDT)</div>
     <div>
-        <span class="price-main">${main_part:,}</span><span class="price-mili">.{decimal_part[:4]}</span>
+        <span class="price-main">${main_part:,}</span><span class="price-mili">.{decimal_part}</span>
     </div>
 </div>
 ''', unsafe_allow_html=True)
 
-# --- THE GUARANTEED GREEN LINE ---
-# Converting to a DataFrame so st.line_chart recognizes it properly
-chart_data = pd.DataFrame(st.session_state.equity_history, columns=["USDT"])
+# --- 6. THE SCREENSHOT-STYLE GLOWING GRAPH ---
+chart_data = pd.DataFrame({'val': st.session_state.equity_history, 'idx': range(len(st.session_state.equity_history))})
 
-# Using the native line_chart which is more stable on mobile/tablets
-st.line_chart(chart_data, color="#00FFC2", height=180, use_container_width=True)
+st.vega_lite_chart(chart_data, {
+    "width": "container",
+    "height": 200,
+    "config": {"view": {"stroke": "transparent"}, "background": "transparent"},
+    "layer": [
+        {
+            # THE GRADIENT FILL (The "Glow" under the line)
+            "mark": {
+                "type": "area",
+                "line": False,
+                "interpolate": "monotone",
+                "color": {
+                    "gradient": "linear",
+                    "stops": [
+                        {"offset": 0, "color": "#00FFC2"},
+                        {"offset": 1, "color": "rgba(0, 255, 194, 0)"}
+                    ],
+                    "x1": 1, "y1": 1, "x2": 1, "y2": 0 # Vertical gradient
+                }
+            },
+            "encoding": {
+                "x": {"field": "idx", "type": "quantitative", "axis": None},
+                "y": {"field": "val", "type": "quantitative", "axis": None, "scale": {"zero": False}}
+            }
+        },
+        {
+            # THE SHARP TOP LINE
+            "mark": {
+                "type": "line",
+                "color": "#00FFC2",
+                "strokeWidth": 3,
+                "interpolate": "monotone"
+            },
+            "encoding": {
+                "x": {"field": "idx", "type": "quantitative", "axis": None},
+                "y": {"field": "val", "type": "quantitative", "axis": None}
+            }
+        }
+    ]
+})
+
+st.markdown('<br>', unsafe_allow_html=True)
 
 # CONTROL BUTTONS
 col1, col2 = st.columns(2)
@@ -97,6 +148,6 @@ with col2: st.button("STOP")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 6. AUTO-REFRESH (1 SEC) ---
+# --- 7. AUTO-REFRESH (1 SEC) ---
 time.sleep(1)
 st.rerun()
