@@ -9,7 +9,7 @@ from solana.rpc.api import Client
 st.set_page_config(page_title="OBSIDIAN ELITE", layout="wide")
 
 # Replace this with your REAL Phantom Public Address
-MY_WALLET = "YOUR_PHANTOM_PUBLIC_ADDRESS_HERE" 
+MY_WALLET = "CES4EuiPnBxpz97iQ57jBcFTBfzmZgZNSnZrNmaCacht" 
 solana_client = Client("https://api.mainnet-beta.solana.com")
 
 # --- 2. THE DATA ENGINES ---
