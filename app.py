@@ -19,7 +19,7 @@ def get_sol_price():
         res = requests.get(url).json()
         return float(res['price'])
     except:
-        return 148.50
+        return 152.34
 
 def get_wallet_balance():
     try:
@@ -28,48 +28,62 @@ def get_wallet_balance():
     except:
         return 0.0
 
-# --- 3. PRO AESTHETIC CSS (MATCHING YOUR SCREENSHOT) ---
+# --- 3. PRO AESTHETIC CSS (EXACT MATCH) ---
 st.markdown("""
     <style>
     header, footer, .stDeployButton, #MainMenu {visibility: hidden;}
     [data-testid="stHeader"] {display: none;}
-    .block-container { max-width: 420px !important; padding: 0px !important; margin: 0 auto !important; }
+    
+    /* Center everything and set background */
+    .block-container { max-width: 450px !important; padding: 0px !important; margin: 0 auto !important; }
     html, body, [data-testid="stAppViewContainer"] { background-color: #000000 !important; overflow-x: hidden !important; }
 
-    .master-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; padding: 15px; box-sizing: border-box; }
+    .master-wrapper { 
+        display: flex; flex-direction: column; align-items: center; 
+        width: 100%; padding: 15px; box-sizing: border-box; 
+    }
 
-    /* CARD DESIGN */
+    /* THE CARD STYLING */
     .glass-card {
-        background-color: #0d0d0d; border-radius: 35px; padding: 35px 20px;
-        width: 100%; border: 1px solid #1c1c1c; text-align: center; margin-bottom: 5px; box-sizing: border-box;
+        background-color: #0d0d0d; border-radius: 40px; padding: 40px 20px;
+        width: 100%; border: 1px solid #1c1c1c; text-align: center; margin-bottom: 5px;
     }
 
     .status-container { display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
     .led { width: 10px; height: 10px; border-radius: 50%; background-color: #00FFC2; box-shadow: 0 0 10px #00FFC2; margin-right: 10px; }
-    .status-text { color: #00FFC2; font-size: 12px; font-weight: 800; letter-spacing: 1px; }
+    .status-text { color: #00FFC2; font-size: 13px; font-weight: 800; letter-spacing: 1px; }
 
-    .price-label { color: #555; font-size: 11px; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; }
-    .price-main { color: #ffffff; font-size: 48px; font-weight: 800; }
-    .price-mili { color: #00FFC2; font-size: 28px; font-weight: 600; font-family: monospace; }
+    .price-label { color: #555; font-size: 12px; font-weight: 600; margin-bottom: 12px; text-transform: uppercase; }
+    .price-main { color: #ffffff; font-size: 52px; font-weight: 800; }
+    .price-mili { color: #00FFC2; font-size: 32px; font-weight: 600; font-family: monospace; }
 
-    /* CENTERED BUTTON CONTAINER */
-    .button-row { 
-        display: flex; 
-        justify-content: center; 
-        gap: 15px; 
-        width: 100%; 
-        margin-top: 10px;
+    /* THE BUTTON ROW - FORCED CENTERING */
+    .btn-container {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        width: 100%;
+        margin-top: 20px;
     }
 
-    .stButton > button { 
-        width: 170px !important; height: 65px !important; border-radius: 35px !important; 
-        font-weight: 900 !important; font-size: 13px !important; letter-spacing: 1px; transition: 0.3s;
+    .btn-custom {
+        flex: 1;
+        height: 70px;
+        border-radius: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 900;
+        font-size: 14px;
+        text-decoration: none;
+        letter-spacing: 1px;
     }
-    
-    /* White Start Button */
-    div.stButton > button:first-child { background-color: #ffffff !important; color: #000000 !important; border: none !important; }
-    /* Dark Stop Button */
-    div.stButton > button:last-child { background-color: #0d0d0d !important; color: #ffffff !important; border: 1px solid #222 !important; }
+
+    .btn-start { background-color: #ffffff; color: #000000; }
+    .btn-stop { background-color: #0d0d0d; color: #ffffff; border: 1px solid #222; }
+
+    /* Hide default streamlit buttons to use ours */
+    .stButton { display: none; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -89,7 +103,7 @@ st.session_state.equity_history = st.session_state.equity_history[-40:]
 # --- 5. RENDER ---
 st.markdown('<div class="master-wrapper">', unsafe_allow_html=True)
 
-# THE CARD
+# THE TOP CARD
 st.markdown(f'''
 <div class="glass-card">
     <div class="status-container"><div class="led"></div><div class="status-text">BOT STATUS: ACTIVE</div></div>
@@ -112,7 +126,7 @@ st.markdown(f'''
 </script>
 ''', unsafe_allow_html=True)
 
-# --- 6. THE GLOWING GRAPH ---
+# --- 6. THE GLOWING GROWTH GRAPH ---
 chart_data = pd.DataFrame({'val': st.session_state.equity_history, 'idx': range(len(st.session_state.equity_history))})
 
 st.vega_lite_chart(chart_data, {
@@ -148,13 +162,13 @@ st.vega_lite_chart(chart_data, {
     ]
 })
 
-# --- 7. PERFECTLY CENTERED BUTTONS ---
-# Using columns for Streamlit logic, but the CSS above keeps them styled and aligned
-btn_col1, btn_col2 = st.columns(2)
-with btn_col1:
-    st.button("START BOT", key="start_btn")
-with btn_col2:
-    st.button("STOP", key="stop_btn")
+# --- 7. THE EXACT BUTTON ROW ---
+st.markdown('''
+<div class="btn-container">
+    <div class="btn-custom btn-start">START BOT</div>
+    <div class="btn-custom btn-stop">STOP</div>
+</div>
+''', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
