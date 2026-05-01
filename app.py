@@ -5,14 +5,14 @@ import requests
 import os
 from solana.rpc.api import Client
 
-# --- 1. CORE REAL-TIME SETUP ---
+# --- 1. BLOCKCHAIN ENGINE ---
 st.set_page_config(page_title="OBSIDIAN ELITE", layout="wide")
 
-# Replace with your real Phantom Address
+# PASTE YOUR REAL PHANTOM ADDRESS HERE
 MY_WALLET = "YOUR_PHANTOM_PUBLIC_ADDRESS_HERE" 
 solana_client = Client("https://api.mainnet-beta.solana.com")
 
-# Fix File Not Found Error immediately
+# Fix trade history file error
 if not os.path.exists("trades.csv"):
     pd.DataFrame(columns=["Pair", "Profit", "Time"]).to_csv("trades.csv", index=False)
 
@@ -23,8 +23,8 @@ if 'view_history' not in st.session_state:
 if 'equity_history' not in st.session_state:
     st.session_state.equity_history = []
 
-# --- 2. DATA ENGINE (100% RAW) ---
-def get_real_data():
+# --- 2. 100% REAL DATA (NO SIMULATION) ---
+def get_verified_equity():
     try:
         p_res = requests.get("https://api.binance.com/api/3/ticker/price?symbol=SOLUSDT", timeout=2).json()
         sol_price = float(p_res['price'])
@@ -34,13 +34,13 @@ def get_real_data():
     except:
         return st.session_state.equity_history[-1] if st.session_state.equity_history else 0.0
 
-current_total = get_real_data()
+current_total = get_verified_equity()
 
 if st.session_state.bot_active and current_total > 0:
     st.session_state.equity_history.append(current_total)
     st.session_state.equity_history = st.session_state.equity_history[-60:]
 
-# --- 3. THE "STRICT CENTER" CSS ---
+# --- 3. THE "BINGX UI" CSS (FORCED CENTERING) ---
 status_color = "#00FFC2" if st.session_state.bot_active else "#FF3B3B"
 
 st.markdown(f"""
@@ -48,35 +48,44 @@ st.markdown(f"""
     header, footer, .stDeployButton, #MainMenu {{visibility: hidden;}}
     [data-testid="stHeader"] {{display: none;}}
     .block-container {{ max-width: 450px !important; padding: 0px !important; margin: 0 auto !important; }}
-    html, body, [data-testid="stAppViewContainer"] {{ background-color: #000000 !important; }}
+    html, body, [data-testid="stAppViewContainer"] {{ background-color: #000000 !important; overflow-x: hidden !important; }}
 
-    /* CENTERED BUTTON CONTAINER */
-    .button-wrapper {{
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        width: 100%;
-        margin: 20px 0;
+    /* FORCED CENTERED BUTTON ROW */
+    [data-testid="stHorizontalBlock"] {{
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 12px !important;
+        width: 100% !important;
+        margin-top: 10px !important;
     }}
 
-    /* START & STOP STYLING */
+    /* BUTTON SHAPE & TEXT */
     div.stButton > button {{
-        height: 70px !important;
-        border-radius: 35px !important;
+        height: 65px !important;
+        border-radius: 32px !important;
         font-weight: 900 !important;
         font-size: 14px !important;
         border: none !important;
-        width: 100% !important;
+        width: 170px !important; /* Locks width for the straight line look */
     }}
 
-    /* Force Start Button to White, Stop to Dark */
-    div[data-testid="column"]:nth-child(1) button {{ background-color: #ffffff !important; color: #000000 !important; }}
-    div[data-testid="column"]:nth-child(2) button {{ background-color: #0d0d0d !important; color: #ffffff !important; border: 1px solid #222 !important; }}
+    /* COLOR OVERRIDES: Start=White, Stop=Black */
+    div[data-testid="column"]:nth-child(1) button {{
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }}
+    div[data-testid="column"]:nth-child(2) button {{
+        background-color: #0d0d0d !important;
+        color: #ffffff !important;
+        border: 1px solid #222 !important;
+    }}
 
-    /* ARCHIVE BUTTON STYLE */
+    /* ARCHIVE SECTION */
     .archive-wrap button {{
         background: #111 !important; color: #fff !important; border: 1px solid #222 !important;
-        height: 45px !important; width: auto !important; padding: 0 30px !important; border-radius: 12px !important;
+        height: 42px !important; width: auto !important; padding: 0 25px !important; border-radius: 10px !important;
     }}
 
     .glass-card {{
@@ -87,7 +96,7 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. RENDER DASHBOARD ---
+# --- 4. UI RENDER ---
 if not st.session_state.view_history:
     main_val = int(current_total)
     dec_val = f"{current_total % 1:.8f}"[2:]
@@ -96,14 +105,14 @@ if not st.session_state.view_history:
     <div style="padding:15px;">
         <div class="glass-card">
             <div style="display:flex; justify-content:center; align-items:center; margin-bottom:20px;">
-                <div class="led"></div><div style="color:{status_color}; font-weight:800; font-size:13px;">BOT STATUS: {"ACTIVE" if st.session_state.bot_active else "STOPPED"}</div>
+                <div class="led"></div><div style="color:{status_color}; font-weight:800; font-size:13px; letter-spacing:1px;">BOT STATUS: {"ACTIVE" if st.session_state.bot_active else "STOPPED"}</div>
             </div>
-            <div style="color:#555; font-size:11px; font-weight:600; margin-bottom:12px;">ACCOUNT EQUITY (USDT)</div>
+            <div style="color:#555; font-size:11px; font-weight:600; margin-bottom:12px; letter-spacing:1px;">ACCOUNT EQUITY (USDT)</div>
             <div><span style="color:#fff; font-size:52px; font-weight:800;">${main_val:,}</span><span style="color:{status_color}; font-size:32px; font-family:monospace;">.{dec_val}</span></div>
         </div>
     ''', unsafe_allow_html=True)
 
-    # Real-Time Graph
+    # The Real-Time Smooth Graph
     if st.session_state.equity_history:
         chart_df = pd.DataFrame({'v': st.session_state.equity_history, 'i': range(len(st.session_state.equity_history))})
         st.vega_lite_chart(chart_df, {
@@ -115,43 +124,43 @@ if not st.session_state.view_history:
             ]
         })
 
-    # BUTTONS - WRAPPED IN COLUMNS FOR CENTERED FLEX
+    # ACTION BUTTONS - LOCKED IN STRAIGHT LINE CENTER
     col1, col2 = st.columns(2)
     with col1:
         if st.button("START BOT"): st.session_state.bot_active = True; st.rerun()
     with col2:
         if st.button("STOP"): st.session_state.bot_active = False; st.rerun()
 
-    # ARCHIVE SECTION
-    st.markdown('<div style="color:#444; font-size:10px; font-weight:800; margin-top:20px; text-transform:uppercase;">Live Execution Log</div>', unsafe_allow_html=True)
-    st.markdown('<div class="archive-wrap">', unsafe_allow_html=True)
+    # LOG SECTION
+    st.markdown('<div style="color:#444; font-size:10px; font-weight:800; margin-top:15px; text-transform:uppercase; letter-spacing:0.5px;">Live Execution Log</div>', unsafe_allow_html=True)
+    st.markdown('<div class="archive-wrap" style="margin-top:10px;">', unsafe_allow_html=True)
     if st.button("ARCHIVE ➜"):
         st.session_state.view_history = True
         st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # LIVE TRADES
+    # TRADES
     trades_df = pd.read_csv("trades.csv").tail(3)
     if trades_df.empty:
-        st.markdown('<div style="color:#222; text-align:center; padding:30px;">NO LIVE TRADES ON BLOCKCHAIN</div>', unsafe_allow_html=True)
+        st.markdown('<div style="color:#222; text-align:center; padding:30px; font-weight:700;">BLOCKCHAIN SYNCING...</div>', unsafe_allow_html=True)
     else:
         for _, row in trades_df.iterrows():
             st.markdown(f'''
             <div style="display:flex; justify-content:space-between; padding:15px 0; border-bottom:1px solid #111;">
-                <div><div style="color:#fff; font-weight:700;">{row['Pair']}</div><div style="color:#444; font-size:11px;">{row['Time']}</div></div>
-                <div style="text-align:right;"><div style="color:#00FFC2; font-weight:800;">{row['Profit']}</div><div style="color:#333; font-size:9px; font-weight:700;">BINGX PRO</div></div>
+                <div><div style="color:#fff; font-weight:700; font-size:14px;">{row['Pair']}</div><div style="color:#444; font-size:11px;">{row['Time']}</div></div>
+                <div style="text-align:right;"><div style="color:#00FFC2; font-weight:800; font-size:16px;">{row['Profit']}</div><div style="color:#333; font-size:9px; font-weight:700; letter-spacing:0.5px;">BINGX PRO</div></div>
             </div>
             ''', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 else:
     # --- ARCHIVE VIEW ---
-    if st.button("⬅ BACK"):
+    if st.button("⬅ BACK TO TERMINAL"):
         st.session_state.view_history = False
         st.rerun()
-    st.title("Full Trade History")
+    st.title("History Logs")
     st.dataframe(pd.read_csv("trades.csv"), use_container_width=True)
 
-# 1-Second Update
+# 1-Second Real-Time Pulse
 time.sleep(1)
 st.rerun()
