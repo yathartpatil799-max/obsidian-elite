@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -8,29 +9,27 @@ from solana.rpc.api import Client
 # --- 1. SETUP & CONFIG ---
 st.set_page_config(page_title="OBSIDIAN ELITE", layout="wide")
 
-# REPLACE THIS with your REAL Phantom Public Address from the "Receive" button
+# REPLACE THIS with your REAL Phantom Public Address
 MY_WALLET = "CES4EuiPnBxpz97iQ57jBcFTBfzmZgZNSnZrNmaCacht" 
 solana_client = Client("https://api.mainnet-beta.solana.com")
 
 # --- 2. DATA ENGINES ---
 def get_sol_price():
-    """Gets real-time SOL price in USDT from Binance"""
     try:
         url = "https://api.binance.com/api/3/ticker/price?symbol=SOLUSDT"
         res = requests.get(url).json()
         return float(res['price'])
     except:
-        return 145.00  # Fallback price
+        return 145.00
 
 def get_wallet_balance():
-    """Pings Solana blockchain for your real balance"""
     try:
         res = solana_client.get_balance(MY_WALLET)
         return res.value / 10**9 
     except:
         return 0.0
 
-# --- 3. PRO AESTHETIC CSS ---
+# --- 3. PRO AESTHETIC CSS (REFINED HIERARCHY) ---
 st.markdown("""
     <style>
     header, footer, .stDeployButton, #MainMenu {visibility: hidden;}
@@ -52,9 +51,9 @@ st.markdown("""
         width: 100%; border: 1px solid #1c1c1c; text-align: center; margin-bottom: 20px; box-sizing: border-box;
     }
 
-    /* MATCHING SIZES FOR THE 8-DIGIT LOOK */
-    .price-main { color: #ffffff; font-size: 38px; font-weight: 800; letter-spacing: -1px; }
-    .price-mili { color: #00FFC2; font-size: 38px; font-weight: 800; font-family: monospace; }
+    /* THE HIERARCHY: Big Dollars, Sleek Decimals */
+    .price-main { color: #ffffff; font-size: 40px; font-weight: 800; letter-spacing: -1px; }
+    .price-mili { color: #00FFC2; font-size: 28px; font-weight: 600; font-family: monospace; opacity: 0.9; }
 
     /* BUTTONS */
     .stButton > button { 
@@ -71,9 +70,8 @@ sol_bal = get_wallet_balance()
 sol_price = get_sol_price()
 total_usdt = sol_bal * sol_price
 
-# Formatting for the 8-digit precision
 main_part = int(total_usdt)
-decimal_part = f"{total_usdt % 1:.8f}"[2:] # Gets exactly 8 digits after the dot
+decimal_part = f"{total_usdt % 1:.8f}"[2:]
 
 # --- 5. RENDER ---
 st.markdown('<div class="master-wrapper">', unsafe_allow_html=True)
@@ -83,13 +81,13 @@ st.markdown(f'''<div class="glass-card">
     <div class="status-container"><div class="led"></div><div class="status-text">PHANTOM LIVE FEED</div></div>
     <div style="color: #555; font-size: 10px; font-weight: 600; margin-bottom: 5px;">ACCOUNT EQUITY (USDT)</div>
     <div>
-        <span class="price-main">${main_part:,}.</span><span class="price-mili">{decimal_part}</span>
+        <span class="price-main">${main_part:,}</span><span class="price-mili">.{decimal_part}</span>
     </div>
 </div>''', unsafe_allow_html=True)
 
-# THE GRAPH
+# THE GRAPH (Smooth 40-point history)
 if 'hist' not in st.session_state:
-    st.session_state.hist = [total_usdt] * 20
+    st.session_state.hist = [total_usdt] * 40
 st.session_state.hist.append(total_usdt)
 st.session_state.hist = st.session_state.hist[-40:]
 
@@ -104,15 +102,11 @@ st.vega_lite_chart(chart_data, {
 
 # THE CONTROL BUTTONS
 col1, col2 = st.columns(2)
-with col1: 
-    if st.button("START HFT"):
-        st.toast("Booting Jupiter Routing...")
-with col2: 
-    if st.button("STOP"):
-        st.toast("System Standby.")
+with col1: st.button("START HFT")
+with col2: st.button("STOP")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 6. AUTO-REFRESH (1 SECOND SCAN) ---
+# --- 6. AUTO-REFRESH ---
 time.sleep(1)
 st.rerun()
