@@ -43,32 +43,38 @@ if 'view_history' not in st.session_state:
 if 'equity_history' not in st.session_state:
     st.session_state.equity_history = [0.0]
 
+from solders.pubkey import Pubkey # Make sure this is at the top of your file
+
 def get_private_balance():
     try:
-        # 1. Force a "Confirmed" check (more reliable than the default)
-        # We use 'confirmed' to see your money even if the network is slow
-        b_res = solana_client.get_balance(Pubkey.from_string(MY_WALLET), commitment="confirmed")
+        # 1. Convert address string to a real Solana Pubkey object
+        wallet_pubkey = Pubkey.from_string(MY_WALLET)
         
-        # 2. Precise Math (ensures tiny amounts like $3 don't round to 0)
-        lamports = b_res.value
-        sol_amt = float(lamports) / 10**9 
+        # 2. Use Helius Optimized Balance API (Returns USD directly)
+        # This bypasses the need to manually calculate SOL * Price
+        api_url = f"https://api.helius.xyz/v1/wallet/{MY_WALLET}/balances?api-key=a564fc7e-aaae-4f0a-93a0-4534acdc1e0a"
+        response = requests.get(api_url, timeout=5)
         
-        # 3. Get Price with longer timeout to prevent "0" on lag
-        p_res = requests.get("https://api.binance.com/api/3/ticker/price?symbol=SOLUSDT", timeout=5).json()
-        sol_price = float(p_res['price'])
-        
-        total = sol_amt * sol_price
-        
-        # 4. If it's STILL 0, we check the 'Value' field directly
-        if total <= 0:
-             # This is a fallback to ensure we see the $3
-             return st.session_state.equity_history[-1] if st.session_state.equity_history else 0.000001
-
-        return total
-    except Exception as e:
-        print(f"ERROR: {e}")
+        if response.status_code == 200:
+            data = response.json()
+            # Helius returns totalUsdValue which includes SOL + all tokens
+            total_value = float(data.get('totalUsdValue', 0))
+            
+            # If API is slow, fallback to raw RPC check
+            if total_value == 0:
+                b_res = solana_client.get_balance(wallet_pubkey)
+                sol_amt = b_res.value / 10**9
+                p_res = requests.get("https://api.binance.com/api/3/ticker/price?symbol=SOLUSDT").json()
+                total_value = sol_amt * float(p_res['price'])
+                
+            return total_value
         return st.session_state.equity_history[-1] if st.session_state.equity_history else 0.0
-
+    except Exception as e:
+        # Log error to Streamlit for debugging
+        st.error(f"Sync Error: {e}")
+        return st.session_state.equity_history[-1] if st.session_state.equity_history else 0.0
+      
+        
 current_equity = get_private_balance()
 
 if st.session_state.bot_active:
