@@ -32,7 +32,7 @@ if 'bot_active' not in st.session_state:
 
 # --- 2. PRIVATE DATA ENGINE ---
 MY_WALLET = "CES4EuiPnBxpz97iQ57jBcFTBfzmZgZNSnZrNmaCacht" 
-solana_client = Client("https://api.mainnet-beta.solana.com")
+solana_client = Client("https://mainnet.helius-rpc.com/?api-key=a564fc7e-aaae-4f0a-93a0-4534acdc1e0a")
 
 if not os.path.exists("trades.csv"):
     pd.DataFrame(columns=["Pair", "Profit", "Time"]).to_csv("trades.csv", index=False)
