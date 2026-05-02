@@ -44,12 +44,29 @@ if 'equity_history' not in st.session_state:
 
 def get_private_balance():
     try:
+        # 1. Get live SOL price for the display
         p_res = requests.get("https://api.binance.com/api/3/ticker/price?symbol=SOLUSDT", timeout=1).json()
         sol_price = float(p_res['price'])
+        
+        # 2. Check main SOL balance
         b_res = solana_client.get_balance(MY_WALLET)
-        balance = b_res.value / 10**9 
-        return sol_price * balance
-    except:
+        sol_balance = b_res.value / 10**9 
+        total_value = sol_balance * sol_price
+
+        # 3. CHECK FOR USDT/USDC TOKENS (The "Million Dollar" Fix)
+        # This tells the bot to look for stablecoins if SOL is empty
+        token_res = solana_client.get_token_accounts_by_owner(
+            MY_WALLET, 
+            {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"}
+        )
+        
+        # Add the value of any USDT/USDC found in the wallet
+        for account in token_res.value:
+            amount_data = solana_client.get_token_account_balance(account.pubkey)
+            total_value += float(amount_data.value.ui_amount)
+
+        return total_value
+    except Exception as e:
         return st.session_state.equity_history[-1] if st.session_state.equity_history else 0.0
 
 current_equity = get_private_balance()
