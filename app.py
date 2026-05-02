@@ -8,7 +8,6 @@ from solana.rpc.api import Client
 # --- 1. SECURE CONFIG & PERSISTENT MEMORY ---
 st.set_page_config(page_title="OBSIDIAN ELITE", layout="wide")
 
-# File-based memory to survive app restarts
 STATUS_FILE = "bot_status.txt"
 
 def get_bot_status():
@@ -23,16 +22,18 @@ def save_bot_status(status):
     with open(STATUS_FILE, "w") as f:
         f.write(status)
 
-# Load the REAL status from the server memory
 current_status = get_bot_status()
 
-# Initialize session state from the saved file
 if 'bot_active' not in st.session_state:
     st.session_state.bot_active = (current_status == "RUNNING")
 
 # --- 2. PRIVATE DATA ENGINE ---
+# Your correct Phantom wallet address
 MY_WALLET = "CES4EuiPnBxpz97iQ57jBcFTBfzmZgZNSnZrNmaCacht" 
-solana_client = Client("https://mainnet.helius-rpc.com/?api-key=a564fc7e-aaae-4f0a-93a0-4534acdc1e0a")
+
+# Your Private Helius RPC to bypass blocks
+RPC_URL = "https://mainnet.helius-rpc.com/?api-key=a564fc7e-aaae-4f0a-93a0-4534acdc1e0a"
+solana_client = Client(RPC_URL)
 
 if not os.path.exists("trades.csv"):
     pd.DataFrame(columns=["Pair", "Profit", "Time"]).to_csv("trades.csv", index=False)
@@ -44,28 +45,35 @@ if 'equity_history' not in st.session_state:
 
 def get_private_balance():
     try:
-        # 1. Direct Ping to Solana
+        # 1. Get Live SOL Balance
         b_res = solana_client.get_balance(MY_WALLET)
-        sol_val = b_res.value / 10**9 
+        sol_amt = b_res.value / 10**9 
         
-        # 2. Grab Live Price
+        # 2. Get Live Price
         p_res = requests.get("https://api.binance.com/api/3/ticker/price?symbol=SOLUSDT", timeout=2).json()
         sol_price = float(p_res['price'])
         
-        # 3. Calculation
-        total = sol_val * sol_price
-        
-        # DEBUG: If balance is still 0, the bot prints to the cloud logs
-        if total == 0:
-            print(f"GHOST_LOG: Connection successful but wallet {MY_WALLET[:5]}... is empty.")
-            
-        return total
-    except Exception as e:
-        print(f"GHOST_LOG: Connection Error: {e}") # This tells you if the RPC is blocked
-        return 0.0
+        # 3. SCAN FOR TOKENS (USDT/USDC)
+        token_value = 0.0
+        try:
+            # This looks for any stablecoins in your sub-accounts
+            token_res = solana_client.get_token_accounts_by_owner(
+                MY_WALLET, 
+                {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"}
+            )
+            for account in token_res.value:
+                bal = solana_client.get_token_account_balance(account.pubkey)
+                if bal.value.ui_amount:
+                    token_value += float(bal.value.ui_amount)
+        except:
+            pass
+
+        return (sol_amt * sol_price) + token_value
+    except:
+        return st.session_state.equity_history[-1] if st.session_state.equity_history else 0.0
+
 current_equity = get_private_balance()
 
-# Only track growth if the bot is actually RUNNING
 if st.session_state.bot_active:
     st.session_state.equity_history.append(current_equity)
     st.session_state.equity_history = st.session_state.equity_history[-60:]
@@ -79,20 +87,14 @@ st.markdown(f"""
     [data-testid="stHeader"] {{display: none;}}
     .block-container {{ max-width: 450px !important; padding: 0px !important; margin: 0 auto !important; }}
     html, body, [data-testid="stAppViewContainer"] {{ background-color: #000000 !important; }}
-    
     .glass-card {{
         background-color: #0d0d0d; border-radius: 40px; padding: 35px 20px;
         border: 1px solid #1c1c1c; text-align: center;
     }}
     .led {{ width: 10px; height: 10px; border-radius: 50%; background-color: {status_color}; box-shadow: 0 0 15px {status_color}; margin-right: 10px; animation: blink 1s infinite alternate; }}
     @keyframes blink {{ from {{ opacity: 1; }} to {{ opacity: 0.4; }} }}
-
-    div.stButton > button {{
-        height: 65px !important; border-radius: 32px !important; font-weight: 900 !important; width: 100% !important; border: none !important;
-    }}
-    /* White Start Button */
+    div.stButton > button {{ height: 65px !important; border-radius: 32px !important; font-weight: 900 !important; width: 100% !important; border: none !important; }}
     div[data-testid="column"]:nth-child(1) button {{ background-color: #ffffff !important; color: #000 !important; }}
-    /* Black Stop Button */
     div[data-testid="column"]:nth-child(2) button {{ background-color: #0d0d0d !important; color: #fff !important; border: 1px solid #222 !important; }}
     </style>
 """, unsafe_allow_html=True)
@@ -113,7 +115,6 @@ if not st.session_state.view_history:
         </div>
     ''', unsafe_allow_html=True)
 
-    # Chart
     chart_df = pd.DataFrame({'v': st.session_state.equity_history, 'i': range(len(st.session_state.equity_history))})
     st.vega_lite_chart(chart_df, {
         "width": "container", "height": 210,
@@ -124,7 +125,6 @@ if not st.session_state.view_history:
         ]
     })
 
-    # CONTROL BUTTONS
     col1, col2 = st.columns(2)
     with col1:
         if st.button("START BOT"):
@@ -137,7 +137,6 @@ if not st.session_state.view_history:
             st.session_state.bot_active = False
             st.rerun()
 
-    # Log & Archive
     st.markdown('<div style="padding: 15px;">', unsafe_allow_html=True)
     if st.button("ARCHIVE ➜"):
         st.session_state.view_history = True
@@ -155,11 +154,10 @@ if not st.session_state.view_history:
     st.markdown('</div></div>', unsafe_allow_html=True)
 
 else:
-    # History View
     if st.button("⬅ BACK TO TERMINAL"):
         st.session_state.view_history = False
         st.rerun()
     st.dataframe(pd.read_csv("trades.csv"), use_container_width=True)
 
-time.sleep(1)
+time.sleep(2)
 st.rerun()
